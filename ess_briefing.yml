@@ -1,0 +1,40 @@
+name: ESS 주간 뉴스 브리핑
+
+on:
+  schedule:
+    - cron: '0 23 * * 0'  # 매주 일요일 23:00 UTC = 월요일 08:00 KST
+  workflow_dispatch:       # GitHub에서 수동 실행 버튼도 제공
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 패키지 설치
+        run: pip install -r requirements.txt
+
+      - name: config.json 생성 (GitHub Secrets에서)
+        run: |
+          cat > config.json <<EOF
+          {
+            "anthropic_api_key": "${{ secrets.ANTHROPIC_API_KEY }}",
+            "email": {
+              "smtp_host": "smtp.gmail.com",
+              "smtp_port": 587,
+              "sender": "${{ secrets.EMAIL_SENDER }}",
+              "password": "${{ secrets.EMAIL_PASSWORD }}",
+              "recipient": "${{ secrets.EMAIL_RECIPIENT }}"
+            }
+          }
+          EOF
+
+      - name: 브리핑 실행
+        run: python ess_briefing.py
