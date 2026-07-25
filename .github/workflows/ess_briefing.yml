@@ -1,4 +1,3 @@
-yaml
 name: ESS 주간 뉴스 브리핑
 
 on:
@@ -9,6 +8,7 @@ on:
 jobs:
   briefing:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,18 +19,25 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: config.json 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: |
-          cat > config.json <<EOF
-          {
-            "anthropic_api_key": "${{ secrets.ANTHROPIC_API_KEY }}",
-            "email": {
-              "smtp_host": "smtp.gmail.com",
-              "smtp_port": 587,
-              "sender": "${{ secrets.EMAIL_SENDER }}",
-              "password": "${{ secrets.EMAIL_PASSWORD }}",
-              "recipient": "${{ secrets.EMAIL_RECIPIENT }}"
+          python -c "
+          import json, os
+          config = {
+            'anthropic_api_key': os.environ['ANTHROPIC_API_KEY'],
+            'email': {
+              'smtp_host': 'smtp.gmail.com',
+              'smtp_port': 587,
+              'sender': os.environ['EMAIL_SENDER'],
+              'password': os.environ['EMAIL_PASSWORD'],
+              'recipient': os.environ['EMAIL_RECIPIENT']
             }
           }
-          EOF
+          open('config.json','w').write(json.dumps(config))
+          "
 
       - run: python ess_briefing.py
