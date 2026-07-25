@@ -40,6 +40,8 @@ SEARCH_QUERIES = {
         "Tesla Megapack energy storage news",
         "Fluence energy storage",
         "ENVISION AESC ESS battery",
+        "Sungrow energy storage system",
+        "Hithium battery ESS",
     ],
     "업계 시장 동향": [
         "ESS 에너지저장장치 시장 동향",
@@ -71,6 +73,8 @@ SEARCH_QUERIES = {
         "UL 1973 battery system standard",
         "ESS fire safety certification standard",
         "energy storage system safety standard 2025",
+        "LSFT large scale fire test battery ESS",
+        "large scale fire testing energy storage",
     ],
 }
 
@@ -191,7 +195,8 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
 <h3>CATL</h3><p>...</p>
 <h3>BYD</h3><p>...</p>
 <h3>LG에너지솔루션</h3><p>...</p>
-<h3>Tesla Energy / 기타</h3><p>...</p>
+<h3>Tesla Energy</h3><p>...</p>
+<h3>Sungrow / Hithium / 기타</h3><p>...</p>
 
 <h2>📈 업계 시장 동향</h2>
 <p>...</p>
@@ -206,8 +211,8 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
 <p>미국 ESS 시장 주요 프로젝트, 설치 현황, IRA 정책 영향 등</p>
 <p>...</p>
 
-<h2>📋 UL / NFPA 인증 규격 동향</h2>
-<p>UL 9540, UL 1973, NFPA 855 등 최신 규격 개정 및 인증 이슈</p>
+<h2>📋 UL / NFPA / LSFT 인증 규격 동향</h2>
+<p>UL 9540, UL 1973, NFPA 855, LSFT(Large Scale Fire Testing) 등 최신 규격 개정 및 인증 이슈</p>
 <p>...</p>
 
 <h2>💡 삼성SDI 시사점</h2>
