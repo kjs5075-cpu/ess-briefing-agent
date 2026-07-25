@@ -1,0 +1,36 @@
+yaml
+name: ESS 주간 뉴스 브리핑
+
+on:
+  schedule:
+    - cron: '0 23 * * 0'
+  workflow_dispatch:
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install -r requirements.txt
+
+      - name: config.json 생성
+        run: |
+          cat > config.json <<EOF
+          {
+            "anthropic_api_key": "${{ secrets.ANTHROPIC_API_KEY }}",
+            "email": {
+              "smtp_host": "smtp.gmail.com",
+              "smtp_port": 587,
+              "sender": "${{ secrets.EMAIL_SENDER }}",
+              "password": "${{ secrets.EMAIL_PASSWORD }}",
+              "recipient": "${{ secrets.EMAIL_RECIPIENT }}"
+            }
+          }
+          EOF
+
+      - run: python ess_briefing.py
