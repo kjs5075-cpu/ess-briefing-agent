@@ -2,7 +2,7 @@ name: ESS 주간 뉴스 브리핑
 
 on:
   schedule:
-    - cron: '0 23 * * 0'
+    - cron: '0 22 * * 0'  # 매주 일요일 22:00 UTC = 월요일 07:00 KST
   workflow_dispatch:
 
 jobs:
