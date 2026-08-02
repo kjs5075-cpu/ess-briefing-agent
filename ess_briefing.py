@@ -350,11 +350,13 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
 <ul>
   <li><a href="링크">제목 (출처, 날짜)</a></li>
 </ul>
+
+중요: 최종 응답에는 "검색하겠습니다", "리포트를 작성하겠습니다" 같은 진행 상황 설명이나 안내 문구를 절대 포함하지 마세요. 마크다운 코드펜스(```)도 사용하지 마세요. 오직 위 구조의 완성된 HTML 태그로만 응답하세요.
 """
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=4000,
+        max_tokens=8000,
         tools=[{
             "type": "web_search_20250305",
             "name": "web_search",
@@ -363,7 +365,22 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    return "".join(block.text for block in message.content if block.type == "text")
+    if message.stop_reason == "max_tokens":
+        print("  ⚠️  응답이 max_tokens 한도에 도달해 잘렸을 수 있습니다.")
+
+    # web_search 사용 시 검색 전후 안내 텍스트 블록이 섞여 나올 수 있어
+    # 마지막 텍스트 블록(최종 결과물)만 사용한다.
+    text_blocks = [block.text for block in message.content if block.type == "text"]
+    briefing_html = text_blocks[-1].strip() if text_blocks else ""
+
+    # 혹시 마크다운 코드펜스(```html ... ```)로 감싸져 오면 벗겨낸다.
+    if briefing_html.startswith("```"):
+        lines = briefing_html.split("\n")[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        briefing_html = "\n".join(lines).strip()
+
+    return briefing_html
 
 
 # ─────────────────────────────────────────────────────────────
@@ -421,10 +438,14 @@ def send_email(briefing_html: str, config: dict):
     email_cfg = config["email"]
     today = datetime.now().strftime("%Y.%m.%d")
 
+    recipients = email_cfg["recipient"]
+    if isinstance(recipients, str):
+        recipients = [recipients]
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"[ESS 브리핑] {today} 주간 경쟁사·업계 동향"
     msg["From"] = email_cfg["sender"]
-    msg["To"] = email_cfg["recipient"]
+    msg["To"] = ", ".join(recipients)
 
     html_body = build_html_email(briefing_html)
     msg.attach(MIMEText(html_body, "html", "utf-8"))
@@ -435,7 +456,7 @@ def send_email(briefing_html: str, config: dict):
         server.login(email_cfg["sender"], email_cfg["password"])
         server.send_message(msg)
 
-    print(f"  ✅ 발송 완료 → {email_cfg['recipient']}")
+    print(f"  ✅ 발송 완료 → {', '.join(recipients)}")
 
 
 # ─────────────────────────────────────────────────────────────
