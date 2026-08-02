@@ -369,8 +369,10 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
         print("  ⚠️  응답이 max_tokens 한도에 도달해 잘렸을 수 있습니다.")
 
     # web_search로 여러 번 검색하면 실제 리포트 본문이 텍스트 블록 여러 개로
-    # 쪼개져 나올 수 있다. "마지막 블록만" 쓰면 앞부분이 통째로 사라지므로,
-    # HTML 태그가 포함된 블록을 전부 순서대로 모아 이어붙인다.
+    # 쪼개져 나올 수 있고, 문장 중간에 태그가 하나도 없는 블록도 생길 수 있다.
+    # 태그 유무로 블록을 골라내면 내용이 통째로 사라지므로, 모든 텍스트
+    # 블록을 순서대로 그대로 이어붙인다 (HTML은 여분의 줄바꿈을 무시하므로
+    # 이어붙이는 지점이 문장 중간이어도 렌더링에는 영향이 없다).
     def _strip_code_fence(text: str) -> str:
         text = text.strip()
         if text.startswith("```"):
@@ -380,12 +382,12 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
             text = "\n".join(lines).strip()
         return text
 
-    html_blocks = [
+    text_blocks = [
         _strip_code_fence(block.text)
         for block in message.content
-        if block.type == "text" and "<" in block.text
+        if block.type == "text"
     ]
-    briefing_html = "\n\n".join(html_blocks).strip()
+    briefing_html = "\n\n".join(text_blocks).strip()
 
     # 모델이 안내 문구나 <!DOCTYPE html>/<html>/<head>/<body> 페이지 래퍼를
     # 덧붙이는 경우가 있다. 실제 본문은 항상 <h2>로 시작하므로 그 앞부분은
