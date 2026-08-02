@@ -351,12 +351,12 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
   <li><a href="링크">제목 (출처, 날짜)</a></li>
 </ul>
 
-중요: 최종 응답에는 "검색하겠습니다", "리포트를 작성하겠습니다" 같은 진행 상황 설명이나 안내 문구를 절대 포함하지 마세요. 마크다운 코드펜스(```)도 사용하지 마세요. 오직 위 구조의 완성된 HTML 태그로만 응답하세요.
+중요: 최종 응답에는 "검색하겠습니다", "리포트를 작성하겠습니다" 같은 진행 상황 설명이나 안내 문구를 절대 포함하지 마세요. 마크다운 코드펜스(```)도 사용하지 마세요. <!DOCTYPE html>, <html>, <head>, <body> 같은 페이지 전체 래퍼 태그도 포함하지 마세요 — 이 콘텐츠는 이미 완성된 이메일 안에 삽입됩니다. 오직 위 구조의 <h2>로 시작하는 본문 HTML 태그만 출력하세요.
 """
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=8000,
+        max_tokens=10000,
         tools=[{
             "type": "web_search_20250305",
             "name": "web_search",
@@ -368,17 +368,40 @@ def generate_briefing(news_by_category: dict, config: dict) -> str:
     if message.stop_reason == "max_tokens":
         print("  ⚠️  응답이 max_tokens 한도에 도달해 잘렸을 수 있습니다.")
 
-    # web_search 사용 시 검색 전후 안내 텍스트 블록이 섞여 나올 수 있어
-    # 마지막 텍스트 블록(최종 결과물)만 사용한다.
-    text_blocks = [block.text for block in message.content if block.type == "text"]
-    briefing_html = text_blocks[-1].strip() if text_blocks else ""
+    # web_search로 여러 번 검색하면 실제 리포트 본문이 텍스트 블록 여러 개로
+    # 쪼개져 나올 수 있다. "마지막 블록만" 쓰면 앞부분이 통째로 사라지므로,
+    # HTML 태그가 포함된 블록을 전부 순서대로 모아 이어붙인다.
+    def _strip_code_fence(text: str) -> str:
+        text = text.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+        return text
 
-    # 혹시 마크다운 코드펜스(```html ... ```)로 감싸져 오면 벗겨낸다.
-    if briefing_html.startswith("```"):
-        lines = briefing_html.split("\n")[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        briefing_html = "\n".join(lines).strip()
+    html_blocks = [
+        _strip_code_fence(block.text)
+        for block in message.content
+        if block.type == "text" and "<" in block.text
+    ]
+    briefing_html = "\n\n".join(html_blocks).strip()
+
+    # 모델이 안내 문구나 <!DOCTYPE html>/<html>/<head>/<body> 페이지 래퍼를
+    # 덧붙이는 경우가 있다. 실제 본문은 항상 <h2>로 시작하므로 그 앞부분은
+    # 버리고, 끝에 남은 </body>/</html> 닫는 래퍼도 제거한다.
+    start = briefing_html.find("<h2>")
+    if start != -1:
+        briefing_html = briefing_html[start:]
+    while True:
+        lowered = briefing_html.rstrip()
+        if lowered.lower().endswith("</html>"):
+            briefing_html = lowered[: -len("</html>")].rstrip()
+        elif lowered.lower().endswith("</body>"):
+            briefing_html = lowered[: -len("</body>")].rstrip()
+        else:
+            briefing_html = lowered
+            break
 
     return briefing_html
 
