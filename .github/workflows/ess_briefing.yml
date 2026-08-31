@@ -2,8 +2,13 @@ name: ESS 주간 뉴스 브리핑
 
 on:
   schedule:
-    - cron: '0 22 * * 0'  # 매주 일요일 22:00 UTC = 월요일 07:00 KST
+    - cron: '0 22 * * 0'  # 매주 일요일 22:00 UTC = 월요일 07:00 KST (정기 실행)
+    - cron: '0 23 * * 0'  # 1시간 후 안전망: 정기 실행 기록이 없으면 강제 실행
   workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
   briefing:
@@ -12,13 +17,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 이번 주 정상 발송 여부 확인 (schedule 실행에서만)
+        id: check
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/ess_briefing.yml/runs?per_page=10")
+          ALREADY_SENT=$(echo "$RESPONSE" | jq -r --arg today "$TODAY" --argjson current "${{ github.run_id }}" '
+            [.workflow_runs[] | select(.id != $current) | select(.created_at | startswith($today)) | select(.conclusion=="success")] | length > 0
+          ')
+          echo "오늘 이미 성공한 실행 있음: $ALREADY_SENT"
+          echo "already_sent=$ALREADY_SENT" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
+        if: steps.check.outputs.already_sent != 'true'
         with:
           python-version: '3.12'
 
       - run: pip install -r requirements.txt
+        if: steps.check.outputs.already_sent != 'true'
 
       - name: config.json 생성
+        if: steps.check.outputs.already_sent != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
@@ -41,3 +64,4 @@ jobs:
           "
 
       - run: python ess_briefing.py
+        if: steps.check.outputs.already_sent != 'true'
