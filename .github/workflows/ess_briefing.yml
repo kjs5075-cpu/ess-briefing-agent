@@ -46,7 +46,6 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: |
           python -c "
           import json, os
@@ -57,7 +56,12 @@ jobs:
               'smtp_port': 587,
               'sender': os.environ['EMAIL_SENDER'],
               'password': os.environ['EMAIL_PASSWORD'],
-              'recipient': os.environ['EMAIL_RECIPIENT']
+              'recipient': [
+                'kjs5075.kim@samsung.com',
+                'woochoul@samsung.com',
+                'jeawon.seo@samsung.com',
+                'daae63.kim@samsung.com'
+              ]
             }
           }
           open('config.json','w').write(json.dumps(config))
