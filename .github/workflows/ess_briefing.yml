@@ -23,13 +23,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TODAY=$(date -u +%Y-%m-%d)
+          # 날짜 문자열 비교는 스케줄이 지연되어 자정을 넘기면 같은 발송 주기를
+          # 서로 다른 날로 인식해 중복 발송을 유발하므로, 자정 무관하게
+          # "최근 20시간 이내 성공 실행 여부"로 판단한다 (두 트리거는 1시간 간격).
+          CUTOFF=$(( $(date -u +%s) - 20*3600 ))
           RESPONSE=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/ess_briefing.yml/runs?per_page=10")
-          ALREADY_SENT=$(echo "$RESPONSE" | jq -r --arg today "$TODAY" --argjson current "${{ github.run_id }}" '
-            [.workflow_runs[] | select(.id != $current) | select(.created_at | startswith($today)) | select(.conclusion=="success")] | length > 0
+          ALREADY_SENT=$(echo "$RESPONSE" | jq -r --argjson current "${{ github.run_id }}" --argjson cutoff "$CUTOFF" '
+            [.workflow_runs[] | select(.id != $current) | select((.created_at | fromdateiso8601) >= $cutoff) | select(.conclusion=="success")] | length > 0
           ')
-          echo "오늘 이미 성공한 실행 있음: $ALREADY_SENT"
+          echo "최근 20시간 내 이미 성공한 실행 있음: $ALREADY_SENT"
           echo "already_sent=$ALREADY_SENT" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
